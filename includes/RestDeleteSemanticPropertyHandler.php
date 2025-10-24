@@ -15,26 +15,10 @@ class RestDeleteSemanticPropertyHandler extends Handler {
     public function execute() {
         $request = $this->getRequest();
         
-        // Get the title from the URL path parameter
+        // Get both title and property from the URL path parameters
         $pathParams = $this->getValidatedParams();
         $titleText = $pathParams['title'] ?? null;
-        
-        // Get property from request body
-        $propertyName = null;
-        
-        // Try to get data from JSON body first
-        $jsonBody = $request->getBody()->getContents();
-        if (!empty($jsonBody)) {
-            $jsonData = json_decode($jsonBody, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
-                $propertyName = $jsonData['property'] ?? null;
-            }
-        }
-        
-        // Fall back to form data if JSON parsing failed or data not found
-        if (!$propertyName) {
-            $propertyName = $request->getPostParams()['property'] ?? null;
-        }
+        $propertyName = $pathParams['property'] ?? null;
 
         if ( !$titleText || !$propertyName ) {
             return $this->getResponseFactory()->createJson( [
@@ -119,6 +103,11 @@ class RestDeleteSemanticPropertyHandler extends Handler {
     public function getParamSettings() {
         return [
             'title' => [
+                self::PARAM_SOURCE => 'path',
+                'type' => 'string',
+                'required' => true
+            ],
+            'property' => [
                 self::PARAM_SOURCE => 'path',
                 'type' => 'string',
                 'required' => true

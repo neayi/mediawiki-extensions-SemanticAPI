@@ -153,19 +153,14 @@ curl_close($ch_get);
  */
 echo "\n=== STEP 5: Testing DELETE request ===\n";
 
-$deleteUrl = "$baseUrl/rest.php/semanticproperty/" . urlencode($title);
-$deleteData = json_encode([
-    'property' => $property
-]);
+$deleteUrl = "$baseUrl/rest.php/semanticproperty/" . urlencode($title) . "/" . urlencode($property);
 
 $ch_delete = curl_init();
 curl_setopt_array($ch_delete, [
     CURLOPT_URL => $deleteUrl,
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_CUSTOMREQUEST => 'DELETE',
-    CURLOPT_POSTFIELDS => $deleteData,
     CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
         'Accept: application/json'
     ],
     CURLOPT_COOKIEFILE => $cookieJar,  // Use session cookies
@@ -248,6 +243,6 @@ curl -b cookies.txt -X POST -H "Content-Type: application/json" -d '{"property":
 # Read all properties for a page (no auth needed)
 curl "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 
-# Delete a property (requires auth, title in URL)
-curl -b cookies.txt -X DELETE -H "Content-Type: application/json" -d '{"property":"HasValue"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
+# Delete a property (requires auth, title and property in URL)
+curl -b cookies.txt -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example/HasValue"
 */

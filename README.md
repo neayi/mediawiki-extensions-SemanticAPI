@@ -54,9 +54,10 @@ The SemanticAPI extension allows external applications to interact with Semantic
 
 ## API Endpoints
 
-### Base URL
+### Base URLs
 ```
-https://your-wiki.org/w/rest.php/semanticproperty/{title}
+https://your-wiki.org/w/rest.php/semanticproperty/{title}           # GET, POST
+https://your-wiki.org/w/rest.php/semanticproperty/{title}/{property} # DELETE
 ```
 
 ### GET - Read All Properties
@@ -148,20 +149,18 @@ curl -X POST "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
 
 Remove all values for a specific semantic property from a page.
 
-**Endpoint**: `DELETE /semanticproperty/{title}`
+**Endpoint**: `DELETE /semanticproperty/{title}/{property}`
 
 **Authentication**: Requires session authentication with edit permissions.
 
 **Parameters**:
 - `{title}`: Page title (in URL path)
-- `property` (required): SMW property name to delete (in request body)
+- `{property}`: SMW property name to delete (in URL path)
 
 #### Example
 ```bash
-curl -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"property":"HasValue"}'
+curl -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example/HasValue" \
+  -b cookies.txt
 ```
 
 **Success Response**:
@@ -299,15 +298,9 @@ const writeResponse = await fetch('https://your-wiki.org/w/rest.php/semanticprop
 });
 
 // Delete a property
-const deleteResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', {
+const deleteResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example/HasValue', {
     method: 'DELETE',
-    credentials: 'include',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-        property: 'HasValue'
-    })
+    credentials: 'include'
 });
 ```
 
@@ -353,8 +346,7 @@ response = session.post(
 
 # Step 5: Delete a property
 response = session.delete(
-    'https://your-wiki.org/w/rest.php/semanticproperty/Page:Example',
-    json={'property': 'HasValue'}
+    'https://your-wiki.org/w/rest.php/semanticproperty/Page:Example/HasValue'
 )
 ```
 
