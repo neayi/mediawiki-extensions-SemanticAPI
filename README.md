@@ -409,10 +409,6 @@ Add debugging to your requests by checking HTTP response codes and error message
 4. Add tests if applicable
 5. Submit a pull request
 
-## License
-
-This extension is licensed under the same license as MediaWiki itself (GPL-2.0+).
-
 ## Support
 
 - **Issues**: Report bugs on the GitHub issue tracker
