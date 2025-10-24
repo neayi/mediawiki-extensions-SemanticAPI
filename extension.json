@@ -1,0 +1,22 @@
+{
+    "name": "SemanticAPI",
+    "version": "1.0.0",
+    "author": "Bertrand Gorge",
+    "url": "https://www.mediawiki.org/wiki/Extension:SemanticAPI",
+    "descriptionmsg": "semanticapi-desc",
+    "type": "extension",
+    "requires": {
+        "MediaWiki": ">= 1.43",
+        "SemanticMediaWiki": ">= 6.0"
+    },
+    "AutoloadNamespaces": {
+        "MediaWiki\\Extension\\SemanticAPI\\": "includes/"
+    },
+    "manifest_version": 2,
+    "RestRoutes": "rest/routes.json",
+    "MessagesDirs": {
+        "SemanticAPI": [
+            "i18n"
+        ]
+    }
+}
