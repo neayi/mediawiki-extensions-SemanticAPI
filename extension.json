@@ -6,14 +6,30 @@
     "descriptionmsg": "semanticapi-desc",
     "type": "extension",
     "requires": {
-        "MediaWiki": ">= 1.43",
-        "SemanticMediaWiki": ">= 6.0"
+        "MediaWiki": ">= 1.43"
     },
+    "load_composer_autoloader": true,
     "AutoloadNamespaces": {
         "MediaWiki\\Extension\\SemanticAPI\\": "includes/"
     },
     "manifest_version": 2,
-    "RestRoutes": "rest/routes.json",
+    "RestRoutes": [
+        {
+            "path": "/semanticproperty/{title}",
+            "method": "GET",
+            "class": "MediaWiki\\Extension\\SemanticAPI\\RestGetSemanticPropertyHandler"
+        },
+        {
+            "path": "/semanticproperty/{title}", 
+            "method": "POST",
+            "class": "MediaWiki\\Extension\\SemanticAPI\\RestSetSemanticPropertyHandler"
+        },
+        {
+            "path": "/semanticproperty/{title}", 
+            "method": "DELETE",
+            "class": "MediaWiki\\Extension\\SemanticAPI\\RestDeleteSemanticPropertyHandler"
+        }
+    ],
     "MessagesDirs": {
         "SemanticAPI": [
             "i18n"

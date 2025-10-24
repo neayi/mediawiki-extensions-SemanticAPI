@@ -8,10 +8,9 @@ use MediaWiki\Title\Title;
 use SMW\StoreFactory;
 use SMW\DIProperty;
 use SMW\DIWikiPage;
-use SMW\DataValueFactory;
 use SMW\SemanticData;
 
-class RestSetSemanticPropertyHandler extends Handler {
+class RestDeleteSemanticPropertyHandler extends Handler {
 
     public function execute() {
         $request = $this->getRequest();
@@ -20,9 +19,8 @@ class RestSetSemanticPropertyHandler extends Handler {
         $pathParams = $this->getValidatedParams();
         $titleText = $pathParams['title'] ?? null;
         
-        // Get property and value from request body
+        // Get property from request body
         $propertyName = null;
-        $valueText = null;
         
         // Try to get data from JSON body first
         $jsonBody = $request->getBody()->getContents();
@@ -30,16 +28,12 @@ class RestSetSemanticPropertyHandler extends Handler {
             $jsonData = json_decode($jsonBody, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($jsonData)) {
                 $propertyName = $jsonData['property'] ?? null;
-                $valueText = $jsonData['value'] ?? null;
             }
         }
         
         // Fall back to form data if JSON parsing failed or data not found
         if (!$propertyName) {
             $propertyName = $request->getPostParams()['property'] ?? null;
-        }
-        if (!$valueText) {
-            $valueText = $request->getPostParams()['value'] ?? null;
         }
 
         if ( !$titleText || !$propertyName ) {
@@ -62,12 +56,6 @@ class RestSetSemanticPropertyHandler extends Handler {
             ], 403 );
         }
 
-        if ( !$valueText ) {
-            return $this->getResponseFactory()->createJson( [
-                'error' => 'Missing value parameter'
-            ], 400 );
-        }
-
         try {
             // Create property directly using the property name as key
             $property = new DIProperty( $propertyName );
@@ -79,45 +67,48 @@ class RestSetSemanticPropertyHandler extends Handler {
                 ], 400 );
             }
             
-            $dataValueFactory = DataValueFactory::getInstance();
-            $value = $dataValueFactory->newDataValueByProperty( $property, $valueText );
-
-            if ( !$value || !$value->isValid() ) {
-                $errorText = $value ? implode( ', ', $value->getErrors() ) : 'Invalid value format';
+            // Get the semantic store
+            $store = StoreFactory::getStore();
+            $subject = DIWikiPage::newFromTitle( $title );
+            
+            // Get existing semantic data
+            $existingData = $store->getSemanticData( $subject );
+            
+            // Check if the property exists on this page
+            $propertyValues = $existingData->getPropertyValues( $property );
+            if ( empty($propertyValues) ) {
                 return $this->getResponseFactory()->createJson( [
-                    'error' => 'Invalid value: ' . $errorText
-                ], 400 );
+                    'error' => 'Property not found on this page'
+                ], 404 );
             }
+            
+            // Create new semantic data without the property to delete
+            $newData = new SemanticData( $subject );
+            
+            // Copy all properties except the one we want to delete
+            foreach ( $existingData->getProperties() as $existingProperty ) {
+                if ( !$existingProperty->equals( $property ) ) {
+                    $values = $existingData->getPropertyValues( $existingProperty );
+                    foreach ( $values as $value ) {
+                        $newData->addPropertyValue( $existingProperty, $value );
+                    }
+                }
+            }
+            
+            // Update the store with the new data (without the deleted property)
+            $store->updateData( $newData );
+
         } catch ( \Exception $e ) {
             return $this->getResponseFactory()->createJson( [
                 'error' => 'SMW error: ' . $e->getMessage()
             ], 500 );
         }
 
-        $store = StoreFactory::getStore();
-        $subject = DIWikiPage::newFromTitle( $title );
-        
-        // Store the semantic data using SMW's proper method
-        $store = StoreFactory::getStore();
-        $subject = DIWikiPage::newFromTitle( $title );
-        
-        // Get existing data first and add to it
-        $existingData = $store->getSemanticData( $subject );
-        $existingData->addPropertyValue( $property, $value->getDataItem() );
-        
-        // Update the store with enhanced data
-        $store->updateData( $existingData );
-        
-        // Force SMW to refresh its cache
-        $store->refreshData( $subject, 1, false );
-
         return $this->getResponseFactory()->createJson( [
             'result' => 'success',
             'title' => $title->getPrefixedText(),
             'property' => $propertyName,
-            'property_key' => $property->getKey(),
-            'property_label' => $property->getLabel(),
-            'value' => $valueText
+            'message' => 'Property deleted successfully'
         ] );
     }
 
