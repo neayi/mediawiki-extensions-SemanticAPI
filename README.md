@@ -60,6 +60,21 @@ https://your-wiki.org/w/rest.php/semanticproperty/{title}           # GET, POST
 https://your-wiki.org/w/rest.php/semanticproperty/{title}/{property} # DELETE
 ```
 
+### Subpages and Special Characters
+
+For page titles containing slashes (subpages) or other special characters, use URL encoding:
+
+```bash
+# For "Test/SubPage" use %2F to encode the slash
+curl "https://your-wiki.org/w/rest.php/semanticproperty/Test%2FSubPage"
+
+# For "Page:Example" the colon is fine as-is
+curl "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
+
+# For DELETE with subpage and property
+curl -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Test%2FSubPage/PropertyName"
+```
+
 ### GET - Read All Properties
 
 Retrieve all semantic properties from a page.
@@ -154,12 +169,17 @@ Remove all values for a specific semantic property from a page.
 **Authentication**: Requires session authentication with edit permissions.
 
 **Parameters**:
-- `{title}`: Page title (in URL path)
+- `{title}`: Page title (in URL path, URL-encode slashes as `%2F` for subpages)
 - `{property}`: SMW property name to delete (in URL path)
 
-#### Example
+#### Examples
 ```bash
+# Delete from a regular page
 curl -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example/HasValue" \
+  -b cookies.txt
+
+# Delete from a subpage (note the encoded slash %2F)
+curl -X DELETE "https://your-wiki.org/w/rest.php/semanticproperty/Test%2FSubPage/PropertyName" \
   -b cookies.txt
 ```
 
