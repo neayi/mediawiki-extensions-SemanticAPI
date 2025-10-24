@@ -80,14 +80,25 @@ curl -X GET "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
   "properties": {
     "HasValue": {
       "label": "HasValue",
+      "type": "quantity",
+      "type_id": "_qty",      
       "values": ["42", "99"],
       "count": 2
     },
-    "Category": {
-      "label": "Category",
-      "values": ["Example Pages"],
+    "Has_geographic_coordinates": {
+      "label": "Has_geographic_coordinates",
+      "type": "geographic",
+      "type_id": "_geo",
+      "values": [
+            {
+                "latitude": 48.284152,
+                "longitude": 1.021355,
+                "altitude": null,
+                "display": "48.284152,1.021355"
+            }
+        ],
       "count": 1
-    }
+     },
   },
   "total_properties": 2
 }
