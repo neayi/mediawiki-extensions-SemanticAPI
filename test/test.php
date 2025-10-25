@@ -84,9 +84,9 @@ curl_close($ch);
 /**
  * Step 3: Make REST API call with session cookies
  */
-echo "\n=== STEP 3: Making REST API POST request ===\n";
+echo "\n=== STEP 3: Making REST API PUT request ===\n";
 
-$postUrl = "$baseUrl/rest.php/semanticproperty/" . urlencode($title);
+$putUrl = "$baseUrl/rest.php/semanticproperty/" . urlencode($title);
 $restData = json_encode([
     'property' => $property,
     'value' => $value
@@ -94,9 +94,9 @@ $restData = json_encode([
 
 $ch = curl_init();
 curl_setopt_array($ch, [
-    CURLOPT_URL => $postUrl,
+    CURLOPT_URL => $putUrl,
     CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
+    CURLOPT_CUSTOMREQUEST => 'PUT',
     CURLOPT_POSTFIELDS => $restData,
     CURLOPT_HTTPHEADER => [
         'Content-Type: application/json',
@@ -238,7 +238,7 @@ curl -c cookies.txt "https://your-wiki.org/w/api.php?action=query&meta=tokens&ty
 curl -b cookies.txt -c cookies.txt -d "action=login&lgname=BotName@AppName&lgpassword=BotPassword&lgtoken=TOKEN&format=json" "https://your-wiki.org/w/api.php"
 
 # Step 3: Make REST API call to set property (title in URL)
-curl -b cookies.txt -X POST -H "Content-Type: application/json" -d '{"property":"HasValue","value":"99"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
+curl -b cookies.txt -X PUT -H "Content-Type: application/json" -d '{"property":"HasValue","value":"99"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 
 # Read all properties for a page (no auth needed)
 curl "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"

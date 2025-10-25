@@ -21,7 +21,7 @@
         },
         {
             "path": "/semanticproperty/{title}", 
-            "method": "POST",
+            "method": "PUT",
             "class": "MediaWiki\\Extension\\SemanticAPI\\RestSetSemanticPropertyHandler"
         },
         {

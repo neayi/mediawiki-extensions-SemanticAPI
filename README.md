@@ -9,9 +9,9 @@ The SemanticAPI extension allows external applications to interact with Semantic
 ## Features
 
 - 📖 **Read SMW Properties**: Retrieve semantic property values from any page via GET requests
-- ✏️ **Write SMW Properties**: Add or update semantic property values via POST requests
+- ✏️ **Write SMW Properties**: Add or update semantic property values via PUT requests
 - 🔒 **Permission-based Access**: Respects MediaWiki's permission system (edit rights required for writing)
-- 📦 **Multiple Input Formats**: Supports both JSON and form data for POST requests
+- 📦 **Multiple Input Formats**: Supports both JSON and form data for PUT requests
 - 🛡️ **Robust Error Handling**: Comprehensive validation and meaningful error messages
 - 🌐 **RESTful Design**: Clean, standard REST API endpoints
 
@@ -56,7 +56,7 @@ The SemanticAPI extension allows external applications to interact with Semantic
 
 ### Base URLs
 ```
-https://your-wiki.org/w/rest.php/semanticproperty/{title}           # GET, POST
+https://your-wiki.org/w/rest.php/semanticproperty/{title}           # GET, PUT
 https://your-wiki.org/w/rest.php/semanticproperty/{title}/{property} # DELETE
 ```
 
@@ -120,11 +120,11 @@ curl -X GET "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 }
 ```
 
-### POST - Write Property Values
+### PUT - Write Property Values
 
 Add or update semantic property values on a page.
 
-**Endpoint**: `POST /semanticproperty/{title}`
+**Endpoint**: `PUT /semanticproperty/{title}`
 
 **Authentication**: Requires session authentication with edit permissions.
 
@@ -135,7 +135,7 @@ Add or update semantic property values on a page.
 
 #### JSON Format (Recommended)
 ```bash
-curl -X POST "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
+curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
   -H "Content-Type: application/json" \
   -b cookies.txt \
   -d '{"property":"HasValue","value":"42"}'
@@ -143,7 +143,7 @@ curl -X POST "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
 
 #### Form Data Format
 ```bash
-curl -X POST "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
+curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
   -b cookies.txt \
   -d "property=HasValue&value=42"
 ```
@@ -245,7 +245,7 @@ curl -b cookies.txt -c cookies.txt -d "action=login&lgname=YourBot@AppName&lgpas
 
 #### Step 3: Use Session Cookies for REST API
 ```bash
-curl -b cookies.txt -X POST -H "Content-Type: application/json" -d '{"property":"HasValue","value":"42"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
+curl -b cookies.txt -X PUT -H "Content-Type: application/json" -d '{"property":"HasValue","value":"42"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 ```
 
 ### BotPassword Setup
@@ -281,7 +281,7 @@ $postData = json_encode([
 
 $context = stream_context_create([
     'http' => [
-        'method' => 'POST',
+        'method' => 'PUT',
         'header' => [
             'Content-Type: application/json',
             'Cookie: ' . getCookies()
@@ -306,7 +306,7 @@ const data = await response.json();
 // Write a property (requires session authentication)
 // First authenticate via Action API, then use cookies for REST calls
 const writeResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', {
-    method: 'POST',
+    method: 'PUT',
     credentials: 'include', // Include cookies
     headers: {
         'Content-Type': 'application/json'
@@ -359,7 +359,7 @@ response = session.get(
 data = response.json()
 
 # Step 4: Write a property
-response = session.post(
+response = session.put(
     'https://your-wiki.org/w/rest.php/semanticproperty/Page:Example',
     json={'property': 'HasValue', 'value': '42'}
 )
@@ -431,9 +431,9 @@ Add debugging to your requests by checking HTTP response codes and error message
 
 ### Version 1.0.0
 - **RESTful URL Structure**: Title in URL path for all operations (`/semanticproperty/{title}`)
-- **Complete CRUD Operations**: GET (read all properties), POST (create/update), DELETE (remove)
+- **Complete CRUD Operations**: GET (read all properties), PUT (create/update), DELETE (remove)
 - **Session Authentication**: Compatible with MediaWiki 1.43 REST API authentication
 - **Clean Response Format**: Normalized property names, structured JSON responses
 - **Comprehensive Property Support**: All SMW property types supported
 - **Error Handling**: Detailed error messages and appropriate HTTP status codes
-- **Multiple Input Formats**: JSON and form data support for POST/DELETE operations
+- **Multiple Input Formats**: JSON and form data support for PUT/DELETE operations
