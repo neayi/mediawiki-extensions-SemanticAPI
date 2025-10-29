@@ -29,10 +29,5 @@
             "method": "DELETE",
             "class": "MediaWiki\\Extension\\SemanticAPI\\RestDeleteSemanticPropertyHandler"
         }
-    ],
-    "MessagesDirs": {
-        "SemanticAPI": [
-            "i18n"
-        ]
-    }
+    ]
 }

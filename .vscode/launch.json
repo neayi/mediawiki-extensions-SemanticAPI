@@ -24,7 +24,7 @@
             "cwd": "${fileDirname}",
             "port": 9003,
             "pathMappings": {
-                "/var/www/html/extensions/NeayiInSemanticAPIteractions": "${workspaceFolder}"
+                "/var/www/html/extensions/SemanticAPI": "${workspaceFolder}"
             }
         }
     ]
