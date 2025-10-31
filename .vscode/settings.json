@@ -4,6 +4,7 @@
          "../SemanticMediawiki",
          "../SemanticMediaWiki/includes/dataitems",
          "../SemanticMediaWiki/src",
-         "../SemanticMediaWiki/includes"
+         "../SemanticMediaWiki/includes",
+         "../SemanticMediaWiki/includes/datavalues"
     ]
 }

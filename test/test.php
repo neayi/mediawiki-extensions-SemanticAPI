@@ -127,7 +127,8 @@ $multiplePropsData = json_encode([
     'properties' => [
         ['property' => 'TestProperty1', 'value' => 'Value1'],
         ['property' => 'TestProperty2', 'value' => 'Value2'],
-        ['property' => 'HasNumber', 'value' => '42']
+        ['property' => 'HasNumber', 'value' => '42'],
+        ['property' => 'A des coordonnées GPS', 'value' => '48.284152,1.021355']
     ]
 ]);
 

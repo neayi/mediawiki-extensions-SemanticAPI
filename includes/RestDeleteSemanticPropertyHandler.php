@@ -5,10 +5,11 @@ namespace MediaWiki\Extension\SemanticAPI;
 use MediaWiki\Rest\Handler;
 use MediaWiki\Rest\Response;
 use MediaWiki\Title\Title;
-use SMW\StoreFactory;
-use SMW\DIProperty;
-use SMW\DIWikiPage;
-use SMW\SemanticData;
+use MediaWiki\Revision\SlotRecord;
+use MediaWiki\Content\ContentHandler;
+use MediaWiki\CommentStore\CommentStoreComment;
+use Wikimedia\ParamValidator\ParamValidator;
+use WikiPage;
 
 class RestDeleteSemanticPropertyHandler extends Handler {
 
@@ -41,50 +42,63 @@ class RestDeleteSemanticPropertyHandler extends Handler {
         }
 
         try {
-            // Create property directly using the property name as key
-            $property = new DIProperty( $propertyName );
+            // Get the WikiPage object
+            $wikiPage = new \WikiPage($title);
             
-            // Check if property is valid
-            if ( !$property->isUserDefined() && !$property->isShown() ) {
-                return $this->getResponseFactory()->createJson( [
-                    'error' => 'Invalid or system property'
-                ], 400 );
+            // Retrieve the current page content
+            $content = $wikiPage->getContent();
+            if (!$content) {
+                return $this->getResponseFactory()->createJson([
+                    'error' => 'Page has no content'
+                ], 400);
             }
             
-            // Get the semantic store
-            $store = StoreFactory::getStore();
-            $subject = DIWikiPage::newFromTitle( $title );
+            $pageText = ContentHandler::getContentText($content);
             
-            // Get existing semantic data
-            $existingData = $store->getSemanticData( $subject );
+            // Escape special regex characters in property name for pattern matching
+            $escapedPropertyName = preg_quote($propertyName, '/');
             
-            // Check if the property exists on this page
-            $propertyValues = $existingData->getPropertyValues( $property );
-            if ( empty($propertyValues) ) {
-                return $this->getResponseFactory()->createJson( [
+            // Pattern to match {{#set:PropertyName=...}} statements
+            $pattern = '/\{\{#set:\s*' . $escapedPropertyName . '\s*=\s*[^}]*\}\}\s*\n?/i';
+            
+            // Check if the property exists in the page
+            if (!preg_match($pattern, $pageText)) {
+                return $this->getResponseFactory()->createJson([
                     'error' => 'Property not found on this page'
-                ], 404 );
+                ], 404);
             }
             
-            // Create new semantic data without the property to delete
-            $newData = new SemanticData( $subject );
+            // Remove the {{#set:}} statement for this property
+            $newPageText = preg_replace($pattern, '', $pageText);
             
-            // Copy all properties except the one we want to delete
-            foreach ( $existingData->getProperties() as $existingProperty ) {
-                if ( !$existingProperty->equals( $property ) ) {
-                    $values = $existingData->getPropertyValues( $existingProperty );
-                    foreach ( $values as $value ) {
-                        $newData->addPropertyValue( $existingProperty, $value );
-                    }
-                }
+            // Clean up multiple consecutive newlines
+            $newPageText = preg_replace('/\n{3,}/', "\n\n", $newPageText);
+            
+            // Create new content object
+            $newContent = ContentHandler::makeContent($newPageText, $title);
+
+            // Save the page with the updated content using PageUpdater
+            $updater = $wikiPage->newPageUpdater($authority);
+            $updater->setContent(SlotRecord::MAIN, $newContent);
+            $updater->saveRevision(
+                CommentStoreComment::newUnsavedComment('Deleted property ' . $propertyName . ' via SemanticAPI'),
+                EDIT_UPDATE
+            );
+            
+            $status = $updater->getStatus();
+
+            if (!$status->isOK()) {
+                return $this->getResponseFactory()->createJson([
+                    'error' => 'Failed to save page',
+                    'details' => $status->getMessage()->text()
+                ], 500);
             }
-            
-            // Update the store with the new data (without the deleted property)
-            $store->updateData( $newData );
 
         } catch ( \Exception $e ) {
+            error_log("SemanticAPI Delete Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             return $this->getResponseFactory()->createJson( [
-                'error' => 'SMW error: ' . $e->getMessage()
+                'error' => 'Internal server error: ' . $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ], 500 );
         }
 
@@ -104,13 +118,13 @@ class RestDeleteSemanticPropertyHandler extends Handler {
         return [
             'title' => [
                 self::PARAM_SOURCE => 'path',
-                'type' => 'string',
-                'required' => true
+                ParamValidator::PARAM_TYPE => 'string',
+                ParamValidator::PARAM_REQUIRED => true
             ],
             'property' => [
                 self::PARAM_SOURCE => 'path',
-                'type' => 'string',
-                'required' => true
+                ParamValidator::PARAM_TYPE => 'string',
+                ParamValidator::PARAM_REQUIRED => true
             ]
         ];
     }

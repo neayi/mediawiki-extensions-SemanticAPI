@@ -488,7 +488,22 @@ The extension supports all standard SMW property types:
 - **Page**: Links to other pages
 - **URL**: Web addresses
 - **Email**: Email addresses
+- **Geographic Coordinates**: GPS coordinates in "latitude,longitude" format (e.g., "48.284152,1.021355")
+- **Quantity**: Numeric values with units
 - **And more**: All SMW data types are supported
+
+### Geographic Coordinates
+
+For geographic coordinate properties, use the format `"latitude,longitude"`:
+
+```bash
+curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{"property":"Has coordinates","value":"48.284152,1.021355"}'
+```
+
+The API accepts various coordinate formats and will attempt to parse them correctly.
 
 ## Troubleshooting
 

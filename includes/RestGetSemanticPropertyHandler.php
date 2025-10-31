@@ -57,17 +57,8 @@ class RestGetSemanticPropertyHandler extends Handler {
                     $propertyValues[] = $formattedValue;
                 }
 
-                // Normalize property key - remove localized namespace prefixes
-                $normalizedKey = $propertyKey;
-                if (strpos($propertyKey, 'Attribut:') === 0) {
-                    $normalizedKey = substr($propertyKey, 9); // Remove "Attribut:" prefix
-                }
-                if (strpos($normalizedKey, 'Property:') === 0) {
-                    $normalizedKey = substr($normalizedKey, 9); // Remove "Property:" prefix
-                }
-                
-                $result[$normalizedKey] = [
-                    'label' => $normalizedKey,
+                $result[$propertyKey] = [
+                    'label' => $propertyKey,
                     'type' => $typeName,
                     'type_id' => $typeId,
                     'values' => $propertyValues,
