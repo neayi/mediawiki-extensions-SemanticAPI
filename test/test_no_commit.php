@@ -5,10 +5,10 @@
  */
 
 // Configuration
-$baseUrl = "https://wiki.yourwiki.org"; // Base wiki URL
+$baseUrl = "https://wiki.dev.tripleperformance.fr"; // Base wiki URL
 $apiUrl = "$baseUrl/api.php";                       // Action API endpoint  
 $restUrl = "$baseUrl/rest.php/semanticproperty";    // REST API endpoint
-$username = "Test user@Robotname";                  // BotPassword username
+$username = "Bertrand Gorge (2848159475)@Bonk";     // BotPassword username
 $password = "t3d0hjj8giii5bqeq8qkqg5es4t1n9cr";     // BotPassword password
 
 $title = "Maraîchage";
@@ -82,9 +82,9 @@ echo "Successfully logged in!\n";
 curl_close($ch);
 
 /**
- * Step 3: Make REST API call with session cookies (single property)
+ * Step 3: Make REST API call with session cookies
  */
-echo "\n=== STEP 3: Making REST API PUT request (single property) ===\n";
+echo "\n=== STEP 3: Making REST API PUT request ===\n";
 
 $putUrl = "$baseUrl/rest.php/semanticproperty/" . urlencode($title);
 $restData = json_encode([
@@ -117,45 +117,6 @@ if (curl_errno($ch)) {
 }
 
 curl_close($ch);
-
-/**
- * Step 3b: Test multiple properties in one request
- */
-echo "\n=== STEP 3b: Making REST API PUT request (multiple properties) ===\n";
-
-$multiplePropsData = json_encode([
-    'properties' => [
-        ['property' => 'TestProperty1', 'value' => 'Value1'],
-        ['property' => 'TestProperty2', 'value' => 'Value2'],
-        ['property' => 'HasNumber', 'value' => '42']
-    ]
-]);
-
-$ch_multiple = curl_init();
-curl_setopt_array($ch_multiple, [
-    CURLOPT_URL => $putUrl,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_CUSTOMREQUEST => 'PUT',
-    CURLOPT_POSTFIELDS => $multiplePropsData,
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Accept: application/json'
-    ],
-    CURLOPT_COOKIEFILE => $cookieJar,  // Use session cookies
-    CURLOPT_SSL_VERIFYPEER => false,
-]);
-
-$multipleResponse = curl_exec($ch_multiple);
-
-if (curl_errno($ch_multiple)) {
-    echo "cURL Multiple Properties Error: " . curl_error($ch_multiple) . "\n";
-} else {
-    $httpCode = curl_getinfo($ch_multiple, CURLINFO_HTTP_CODE);
-    echo "Multiple Properties HTTP Code: $httpCode\n";
-    echo "Multiple Properties Response:\n$multipleResponse\n";
-}
-
-curl_close($ch_multiple);
 
 /**
  * Step 4: Wait a moment for SMW to process, then test GET request for all properties
@@ -276,11 +237,8 @@ curl -c cookies.txt "https://your-wiki.org/w/api.php?action=query&meta=tokens&ty
 # Step 2: Login with bot password
 curl -b cookies.txt -c cookies.txt -d "action=login&lgname=BotName@AppName&lgpassword=BotPassword&lgtoken=TOKEN&format=json" "https://your-wiki.org/w/api.php"
 
-# Step 3: Make REST API call to set single property (title in URL)
+# Step 3: Make REST API call to set property (title in URL)
 curl -b cookies.txt -X PUT -H "Content-Type: application/json" -d '{"property":"HasValue","value":"99"}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
-
-# Step 3b: Set multiple properties at once
-curl -b cookies.txt -X PUT -H "Content-Type: application/json" -d '{"properties":[{"property":"HasValue","value":"99"},{"property":"HasAuthor","value":"John"}]}' "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 
 # Read all properties for a page (no auth needed)
 curl "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"

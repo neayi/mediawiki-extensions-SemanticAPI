@@ -9,7 +9,7 @@ The SemanticAPI extension allows external applications to interact with Semantic
 ## Features
 
 - 📖 **Read SMW Properties**: Retrieve semantic property values from any page via GET requests
-- ✏️ **Write SMW Properties**: Add or update semantic property values via PUT requests
+- ✏️ **Write SMW Properties**: Add or update single or multiple semantic property values via PUT requests
 - 🔒 **Permission-based Access**: Respects MediaWiki's permission system (edit rights required for writing)
 - 📦 **Multiple Input Formats**: Supports both JSON and form data for PUT requests
 - 🛡️ **Robust Error Handling**: Comprehensive validation and meaningful error messages
@@ -122,7 +122,7 @@ curl -X GET "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example"
 
 ### PUT - Write Property Values
 
-Add or update semantic property values on a page.
+Add or update semantic property values on a page. Supports both single and multiple properties in one request.
 
 **Endpoint**: `PUT /semanticproperty/{title}`
 
@@ -130,10 +130,13 @@ Add or update semantic property values on a page.
 
 **Parameters**:
 - `{title}`: Page title (in URL path)
-- `property` (required): SMW property name (in request body)
-- `value` (required): Property value to set (in request body)
 
-#### JSON Format (Recommended)
+#### Single Property Format
+
+**Request Body Parameters**:
+- `property` (required): SMW property name
+- `value` (required): Property value to set
+
 ```bash
 curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
   -H "Content-Type: application/json" \
@@ -141,23 +144,77 @@ curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
   -d '{"property":"HasValue","value":"42"}'
 ```
 
-#### Form Data Format
-```bash
-curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
-  -b cookies.txt \
-  -d "property=HasValue&value=42"
-```
-
-**Success Response**:
+**Single Property Success Response**:
 ```json
 {
   "result": "success",
   "title": "Page:Example",
-  "property": "HasValue",
-  "property_key": "HasValue",
-  "property_label": "HasValue",
-  "value": "42"
+  "properties": [
+    {
+      "property": "HasValue",
+      "property_key": "HasValue",
+      "property_label": "HasValue",
+      "value": "42"
+    }
+  ],
+  "count": 1
 }
+```
+
+#### Multiple Properties Format
+
+**Request Body Parameters**:
+- `properties` (required): Array of property objects, each containing:
+  - `property` (required): SMW property name
+  - `value` (required): Property value to set
+
+```bash
+curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
+  -H "Content-Type: application/json" \
+  -b cookies.txt \
+  -d '{
+    "properties": [
+      {"property":"HasValue","value":"42"},
+      {"property":"HasAuthor","value":"John Doe"},
+      {"property":"HasDate","value":"2025-10-31"}
+    ]
+  }'
+```
+
+**Multiple Properties Success Response**:
+```json
+{
+  "result": "success",
+  "title": "Page:Example",
+  "properties": [
+    {
+      "property": "HasValue",
+      "property_key": "HasValue",
+      "property_label": "HasValue",
+      "value": "42"
+    },
+    {
+      "property": "HasAuthor",
+      "property_key": "HasAuthor", 
+      "property_label": "HasAuthor",
+      "value": "John Doe"
+    },
+    {
+      "property": "HasDate",
+      "property_key": "HasDate",
+      "property_label": "HasDate", 
+      "value": "2025-10-31"
+    }
+  ],
+  "count": 3
+}
+```
+
+#### Form Data Format (Single Property Only)
+```bash
+curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
+  -b cookies.txt \
+  -d "property=HasValue&value=42"
 ```
 
 ### DELETE - Remove Property Values
@@ -268,13 +325,13 @@ $response = file_get_contents(
 );
 $data = json_decode($response, true);
 
-// Write a property (requires session authentication)
+// Write a single property (requires session authentication)
 // First, login to get session cookies
 $loginToken = getLoginToken();
 login($loginToken, 'YourBot@AppName', 'BotPassword');
 
-// Then make authenticated request
-$postData = json_encode([
+// Single property request
+$singlePropData = json_encode([
     'property' => 'HasValue',
     'value' => '42'
 ]);
@@ -286,7 +343,29 @@ $context = stream_context_create([
             'Content-Type: application/json',
             'Cookie: ' . getCookies()
         ],
-        'content' => $postData
+        'content' => $singlePropData
+    ]
+]);
+
+$response = file_get_contents('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', false, $context);
+
+// Write multiple properties at once
+$multiPropData = json_encode([
+    'properties' => [
+        ['property' => 'HasValue', 'value' => '42'],
+        ['property' => 'HasAuthor', 'value' => 'John Doe'],
+        ['property' => 'HasDate', 'value' => '2025-10-31']
+    ]
+]);
+
+$context = stream_context_create([
+    'http' => [
+        'method' => 'PUT',
+        'header' => [
+            'Content-Type: application/json',
+            'Cookie: ' . getCookies()
+        ],
+        'content' => $multiPropData
     ]
 ]);
 
@@ -303,9 +382,9 @@ const response = await fetch(
 );
 const data = await response.json();
 
-// Write a property (requires session authentication)
+// Write a single property (requires session authentication)
 // First authenticate via Action API, then use cookies for REST calls
-const writeResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', {
+const singlePropResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', {
     method: 'PUT',
     credentials: 'include', // Include cookies
     headers: {
@@ -314,6 +393,22 @@ const writeResponse = await fetch('https://your-wiki.org/w/rest.php/semanticprop
     body: JSON.stringify({
         property: 'HasValue',
         value: '42'
+    })
+});
+
+// Write multiple properties at once
+const multiPropResponse = await fetch('https://your-wiki.org/w/rest.php/semanticproperty/Page:Example', {
+    method: 'PUT',
+    credentials: 'include', // Include cookies
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+        properties: [
+            {property: 'HasValue', value: '42'},
+            {property: 'HasAuthor', value: 'John Doe'},
+            {property: 'HasDate', value: '2025-10-31'}
+        ]
     })
 });
 
@@ -358,10 +453,22 @@ response = session.get(
 )
 data = response.json()
 
-# Step 4: Write a property
+# Step 4: Write a single property
 response = session.put(
     'https://your-wiki.org/w/rest.php/semanticproperty/Page:Example',
     json={'property': 'HasValue', 'value': '42'}
+)
+
+# Write multiple properties at once
+response = session.put(
+    'https://your-wiki.org/w/rest.php/semanticproperty/Page:Example',
+    json={
+        'properties': [
+            {'property': 'HasValue', 'value': '42'},
+            {'property': 'HasAuthor', 'value': 'John Doe'},
+            {'property': 'HasDate', 'value': '2025-10-31'}
+        ]
+    }
 )
 
 # Step 5: Delete a property
@@ -432,8 +539,10 @@ Add debugging to your requests by checking HTTP response codes and error message
 ### Version 1.0.0
 - **RESTful URL Structure**: Title in URL path for all operations (`/semanticproperty/{title}`)
 - **Complete CRUD Operations**: GET (read all properties), PUT (create/update), DELETE (remove)
+- **Multiple Property Support**: Set multiple properties in a single PUT request
 - **Session Authentication**: Compatible with MediaWiki 1.43 REST API authentication
 - **Clean Response Format**: Normalized property names, structured JSON responses
 - **Comprehensive Property Support**: All SMW property types supported
 - **Error Handling**: Detailed error messages and appropriate HTTP status codes
 - **Multiple Input Formats**: JSON and form data support for PUT/DELETE operations
+- **Backward Compatibility**: Single property format still supported alongside multiple properties
