@@ -13,6 +13,8 @@ use WikiPage;
 
 class RestDeleteSemanticPropertyHandler extends Handler {
 
+    use JsonResponseTrait;
+
     public function execute() {
         $request = $this->getRequest();
         
@@ -22,21 +24,21 @@ class RestDeleteSemanticPropertyHandler extends Handler {
         $propertyName = $pathParams['property'] ?? null;
 
         if ( !$titleText || !$propertyName ) {
-            return $this->getResponseFactory()->createJson( [
+            return $this->createJsonResponse( [
                 'error' => 'Missing required parameters: title or property'
             ], 400 );
         }
 
         $title = Title::newFromText( $titleText );
         if ( !$title || !$title->exists() ) {
-            return $this->getResponseFactory()->createJson( [
+            return $this->createJsonResponse( [
                 'error' => 'Invalid or non-existing title'
             ], 400 );
         }
 
         $authority = $this->getAuthority();
         if ( !$authority->isAllowed( 'edit' ) ) {
-            return $this->getResponseFactory()->createJson( [
+            return $this->createJsonResponse( [
                 'error' => 'Permission denied'
             ], 403 );
         }
@@ -48,32 +50,23 @@ class RestDeleteSemanticPropertyHandler extends Handler {
             // Retrieve the current page content
             $content = $wikiPage->getContent();
             if (!$content) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Page has no content'
                 ], 400);
             }
             
             $pageText = ContentHandler::getContentText($content);
             
-            // Escape special regex characters in property name for pattern matching
-            $escapedPropertyName = preg_quote($propertyName, '/');
-            
-            // Pattern to match {{#set:PropertyName=...}} statements
-            $pattern = '/\{\{#set:\s*' . $escapedPropertyName . '\s*=\s*[^}]*\}\}\s*\n?/i';
-            
+            // Remove the property from the {{#set:}} statements
+            $newPageText = SetStatementEditor::removeProperty($pageText, $propertyName);
+
             // Check if the property exists in the page
-            if (!preg_match($pattern, $pageText)) {
-                return $this->getResponseFactory()->createJson([
+            if ($newPageText === null) {
+                return $this->createJsonResponse([
                     'error' => 'Property not found on this page'
                 ], 404);
             }
-            
-            // Remove the {{#set:}} statement for this property
-            $newPageText = preg_replace($pattern, '', $pageText);
-            
-            // Clean up multiple consecutive newlines
-            $newPageText = preg_replace('/\n{3,}/', "\n\n", $newPageText);
-            
+
             // Create new content object
             $newContent = ContentHandler::makeContent($newPageText, $title);
 
@@ -88,21 +81,21 @@ class RestDeleteSemanticPropertyHandler extends Handler {
             $status = $updater->getStatus();
 
             if (!$status->isOK()) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Failed to save page',
                     'details' => $status->getMessage()->text()
                 ], 500);
             }
 
-        } catch ( \Exception $e ) {
+        } catch ( \Throwable $e ) {
             error_log("SemanticAPI Delete Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-            return $this->getResponseFactory()->createJson( [
+            return $this->createJsonResponse( [
                 'error' => 'Internal server error: ' . $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ], 500 );
         }
 
-        return $this->getResponseFactory()->createJson( [
+        return $this->createJsonResponse( [
             'result' => 'success',
             'title' => $title->getPrefixedText(),
             'property' => $propertyName,

@@ -14,6 +14,8 @@ use WikiPage;
 
 class RestSetSemanticPropertyHandler extends Handler {
 
+    use JsonResponseTrait;
+
     public function execute() {
         try {
             $request = $this->getRequest();
@@ -25,7 +27,7 @@ class RestSetSemanticPropertyHandler extends Handler {
             // Get properties from request body - support both single and multiple properties
             $properties = [];
             
-            // Try to get data from JSON body first
+            // Only JSON bodies are accepted (the REST framework rejects form data with a 415)
             $jsonBody = $request->getBody()->getContents();
             if (!empty($jsonBody)) {
                 $jsonData = json_decode($jsonBody, true);
@@ -39,17 +41,10 @@ class RestSetSemanticPropertyHandler extends Handler {
                     }
                 }
             }
-            
-            // Fall back to form data if JSON parsing failed or data not found
-            if (empty($properties)) {
-                $formParams = $request->getPostParams();
-                if (isset($formParams['property']) && isset($formParams['value'])) {
-                    $properties = [['property' => $formParams['property'], 'value' => $formParams['value']]];
-                }
-            }
+
 
             if (!$titleText || empty($properties)) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Missing required parameters: title or properties'
                 ], 400);
             }
@@ -57,7 +52,7 @@ class RestSetSemanticPropertyHandler extends Handler {
             // Validate all properties before making changes
             foreach ($properties as $index => $propData) {
                 if (!isset($propData['property']) || !isset($propData['value'])) {
-                    return $this->getResponseFactory()->createJson([
+                    return $this->createJsonResponse([
                         'error' => "Missing property or value in item $index"
                     ], 400);
                 }
@@ -66,7 +61,7 @@ class RestSetSemanticPropertyHandler extends Handler {
                 $valueText = $propData['value'];
                 
                 if (empty($propertyName) || $valueText === null || $valueText === '') {
-                    return $this->getResponseFactory()->createJson([
+                    return $this->createJsonResponse([
                         'error' => "Empty property name or value in item $index"
                     ], 400);
                 }
@@ -74,14 +69,14 @@ class RestSetSemanticPropertyHandler extends Handler {
 
             $title = Title::newFromText($titleText);
             if (!$title || !$title->exists()) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Invalid or non-existing title'
                 ], 400);
             }
 
             $authority = $this->getAuthority();
             if (!$authority->isAllowed('edit')) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Permission denied'
                 ], 403);
             }
@@ -99,32 +94,7 @@ class RestSetSemanticPropertyHandler extends Handler {
 
             // Update or add {{#set:}} statements for all properties
             foreach ($properties as $propData) {
-                $propertyName = $propData['property'];
-                $valueText = $propData['value'];
-                
-                // Escape pipe characters in values
-                $escapedValue = str_replace('|', '{{!}}', $valueText);
-                
-                // Escape special regex characters in property name for pattern matching
-                $escapedPropertyName = preg_quote($propertyName, '/');
-                
-                // Pattern to match existing {{#set:PropertyName=...}} statements
-                $pattern = '/\{\{#set:\s*' . $escapedPropertyName . '\s*=\s*[^}]*\}\}/i';
-                
-                $newStatement = "{{#set:{$propertyName}={$escapedValue}}}";
-                
-                // Check if this property already has a {{#set:}} statement
-                if (preg_match($pattern, $pageText)) {
-                    // Replace existing statement
-                    $pageText = preg_replace($pattern, $newStatement, $pageText);
-                } else {
-                    // Append new statement
-                    $separator = "\n";
-                    if (!empty($pageText) && !preg_match('/\n$/', $pageText)) {
-                        $separator = "\n\n";
-                    }
-                    $pageText .= $separator . $newStatement;
-                }
+                $pageText = SetStatementEditor::setProperty($pageText, (string)$propData['property'], (string)$propData['value']);
             }
 
             // Create new content object using ContentHandler
@@ -141,23 +111,23 @@ class RestSetSemanticPropertyHandler extends Handler {
             $status = $updater->getStatus();
 
             if (!$status->isOK()) {
-                return $this->getResponseFactory()->createJson([
+                return $this->createJsonResponse([
                     'error' => 'Failed to save page',
                     'details' => $status->getMessage()->text()
                 ], 500);
             }
 
             // Return success response
-            return $this->getResponseFactory()->createJson([
+            return $this->createJsonResponse([
                 'result' => 'success',
                 'title' => $title->getPrefixedText(),
                 'properties' => $properties,
                 'count' => count($properties)
             ]);
         
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log("SemanticAPI Fatal Error: " . $e->getMessage() . "\n" . $e->getTraceAsString());
-            return $this->getResponseFactory()->createJson([
+            return $this->createJsonResponse([
                 'error' => 'Internal server error: ' . $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ], 500);

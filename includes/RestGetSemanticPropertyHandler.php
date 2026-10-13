@@ -12,20 +12,22 @@ use SMW\SemanticData;
 
 class RestGetSemanticPropertyHandler extends Handler {
 
+    use JsonResponseTrait;
+
     public function execute() {
         // Get the title from the URL path parameter
         $pathParams = $this->getValidatedParams();
         $titleText = $pathParams['title'] ?? null;
 
         if (!$titleText) {
-            return $this->getResponseFactory()->createJson([
+            return $this->createJsonResponse([
                 'error' => 'Missing required parameter: title'
             ], 400);
         }
 
         $title = Title::newFromText($titleText);
         if (!$title || !$title->exists()) {
-            return $this->getResponseFactory()->createJson([
+            return $this->createJsonResponse([
                 'error' => 'Invalid or non-existing title'
             ], 400);
         }
@@ -48,7 +50,7 @@ class RestGetSemanticPropertyHandler extends Handler {
                 }
 
                 // Get property type information
-                $typeId = $property->findPropertyTypeID();
+                $typeId = $property->findPropertyValueType();
                 $typeName = $this->getReadableTypeName($typeId);
 
                 $propertyValues = [];
@@ -66,13 +68,13 @@ class RestGetSemanticPropertyHandler extends Handler {
                 ];
             }
 
-            return $this->getResponseFactory()->createJson([
+            return $this->createJsonResponse([
                 'title' => $title->getPrefixedText(),
                 'properties' => $result,
                 'total_properties' => count($result)
             ]);
-        } catch (\Exception $e) {
-            return $this->getResponseFactory()->createJson([
+        } catch (\Throwable $e) {
+            return $this->createJsonResponse([
                 'error' => 'SMW error: ' . $e->getMessage(),
                 'title' => $title->getPrefixedText() ?? $titleText
             ], 500);
@@ -164,7 +166,7 @@ class RestGetSemanticPropertyHandler extends Handler {
                 default:
                     return $this->formatTextValue($dataItem);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             // Fallback to basic serialization if specialized formatting fails
             return $this->formatTextValue($dataItem);
         }
@@ -204,17 +206,35 @@ class RestGetSemanticPropertyHandler extends Handler {
     }
 
     private function formatDateValue($dataItem) {
-        if (method_exists($dataItem, 'getMwTimestamp')) {
+        if ($dataItem instanceof \SMW\DataItems\Time) {
+            // Only output the parts of the date that are known (year, month, day, time)
+            $precision = $dataItem->getPrecision();
+            $date = sprintf('%04d', $dataItem->getYear());
+            if ($precision >= \SMW\DataItems\Time::PREC_YM) {
+                $date .= sprintf('-%02d', $dataItem->getMonth());
+            }
+            if ($precision >= \SMW\DataItems\Time::PREC_YMD) {
+                $date .= sprintf('-%02d', $dataItem->getDay());
+            }
+
+            $iso = $date;
+            $formatted = $date;
+            if ($precision >= \SMW\DataItems\Time::PREC_YMDT) {
+                $time = sprintf('%02d:%02d:%02d', $dataItem->getHour(), $dataItem->getMinute(), (int)$dataItem->getSecond());
+                $iso .= 'T' . $time . 'Z';
+                $formatted .= ' ' . $time;
+            }
+
+            // getMwTimestamp() returns false for dates that can't be stored as a MediaWiki timestamp
             $timestamp = $dataItem->getMwTimestamp();
-            $unixTime = strtotime($timestamp);
-            
+
             return [
-                'timestamp' => $timestamp,
-                'iso' => $unixTime ? date('c', $unixTime) : null,
-                'formatted' => $unixTime ? date('Y-m-d H:i:s', $unixTime) : $timestamp,
-                'year' => $unixTime ? (int)date('Y', $unixTime) : null,
-                'precision' => method_exists($dataItem, 'getPrecision') ? $dataItem->getPrecision() : null,
-                'display' => $this->getStringValue($dataItem)
+                'timestamp' => $timestamp === false ? null : (int)$timestamp,
+                'iso' => $iso,
+                'formatted' => $formatted,
+                'year' => $dataItem->getYear(),
+                'precision' => $precision,
+                'display' => $formatted
             ];
         }
         return $this->formatTextValue($dataItem);

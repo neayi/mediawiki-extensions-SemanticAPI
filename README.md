@@ -11,7 +11,7 @@ The SemanticAPI extension allows external applications to interact with Semantic
 - 📖 **Read SMW Properties**: Retrieve semantic property values from any page via GET requests
 - ✏️ **Write SMW Properties**: Add or update single or multiple semantic property values via PUT requests
 - 🔒 **Permission-based Access**: Respects MediaWiki's permission system (edit rights required for writing)
-- 📦 **Multiple Input Formats**: Supports both JSON and form data for PUT requests
+- 📦 **JSON Input**: PUT requests take a JSON body (`Content-Type: application/json`)
 - 🛡️ **Robust Error Handling**: Comprehensive validation and meaningful error messages
 - 🌐 **RESTful Design**: Clean, standard REST API endpoints
 
@@ -210,16 +210,21 @@ curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
 }
 ```
 
-#### Form Data Format (Single Property Only)
-```bash
-curl -X PUT "https://your-wiki.org/w/rest.php/semanticproperty/Page:Example" \
-  -b cookies.txt \
-  -d "property=HasValue&value=42"
-```
+#### How values are stored
+
+Values are written in the page wikitext as `{{#set:Property=Value}}` statements:
+
+- If the property is already set in a `{{#set:}}` statement, its value is replaced in place. Other properties of the same statement are kept (e.g. `{{#set:A=1|B=2}}` becomes `{{#set:A=3|B=2}}`).
+- If the property is set several times, the first assignment is replaced and the others are removed.
+- Otherwise a new `{{#set:}}` statement is appended at the end of the page.
+- Pipe characters in values are escaped as `{{!}}`.
+- Property names are matched like page titles: spaces and underscores are equivalent and the first letter is case insensitive.
+
+Only JSON bodies are accepted: MediaWiki's REST API rejects `application/x-www-form-urlencoded` bodies with a `415 Unsupported Media Type` error.
 
 ### DELETE - Remove Property Values
 
-Remove all values for a specific semantic property from a page.
+Remove all values for a specific semantic property from a page. Only the property's assignments are removed from the `{{#set:}}` statements; a statement is removed when it no longer sets any property.
 
 **Endpoint**: `DELETE /semanticproperty/{title}/{property}`
 
@@ -256,10 +261,10 @@ The API returns appropriate HTTP status codes and error messages:
 
 ### Common Error Responses
 
-**400 Bad Request** - Invalid parameters:
+**400 Bad Request** - Invalid parameters, or the page doesn't exist:
 ```json
 {
-  "error": "Missing required parameters: title or property"
+  "error": "Invalid or non-existing title"
 }
 ```
 
@@ -270,17 +275,20 @@ The API returns appropriate HTTP status codes and error messages:
 }
 ```
 
-**404 Not Found** - Page doesn't exist:
+**404 Not Found** - The property to delete is not set on the page:
 ```json
 {
-  "error": "Page does not exist: NonExistentPage"
+  "error": "Property not found on this page"
 }
 ```
 
-**500 Internal Server Error** - SMW error:
+**415 Unsupported Media Type** - The PUT body is not JSON.
+
+**500 Internal Server Error** - SMW error or failure while saving the page:
 ```json
 {
-  "error": "SMW error: Invalid property type"
+  "error": "Failed to save page",
+  "details": "..."
 }
 ```
 
@@ -559,5 +567,5 @@ Add debugging to your requests by checking HTTP response codes and error message
 - **Clean Response Format**: Normalized property names, structured JSON responses
 - **Comprehensive Property Support**: All SMW property types supported
 - **Error Handling**: Detailed error messages and appropriate HTTP status codes
-- **Multiple Input Formats**: JSON and form data support for PUT/DELETE operations
+- **JSON Input**: PUT requests take a JSON body
 - **Backward Compatibility**: Single property format still supported alongside multiple properties
